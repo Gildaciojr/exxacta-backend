@@ -5,17 +5,14 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copia apenas o necessário para instalar dependências
 COPY package*.json ./
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
 
-RUN npm install
+RUN npm ci
 
-# Copia o código fonte
 COPY src ./src
 
-# Build do NestJS
 RUN npm run build
 
 
@@ -28,9 +25,10 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copia somente o necessário para runtime
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY package*.json ./
+
+RUN npm ci --omit=dev
+
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
