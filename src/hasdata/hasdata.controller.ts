@@ -15,7 +15,7 @@ export class HasdataController {
   // =========================================================
   @Post("/import-by-url")
   async importByUrl(@Body() body: ImportHasdataByUrlDto) {
-    return this.importService.importByUrl(body.url);
+    return this.importService.importByUrl(body.url, body.options);
   }
 
   // =========================================================
