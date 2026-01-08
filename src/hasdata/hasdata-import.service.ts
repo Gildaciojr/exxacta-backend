@@ -2,6 +2,21 @@ import { Injectable } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
 import { fetchAndParseHasdata } from "./utils/hasdata-parser.util";
 
+/* =====================================================
+   MAPEAMENTO DO ENUM tamanho_empresa (POSTGRES)
+===================================================== */
+function mapTamanhoEmpresa(
+  employees?: number | null
+): "10_ate_20" | "21_ate_50" | "51_ate_100" | null {
+  if (!employees) return null;
+
+  if (employees >= 10 && employees <= 20) return "10_ate_20";
+  if (employees >= 21 && employees <= 50) return "21_ate_50";
+  if (employees >= 51 && employees <= 100) return "51_ate_100";
+
+  return null;
+}
+
 @Injectable()
 export class HasdataImportService {
   constructor(private readonly supabase: SupabaseService) {}
@@ -13,19 +28,29 @@ export class HasdataImportService {
     let skipped = 0;
 
     for (const item of items) {
+      /* -----------------------------------------------------
+         VALIDAÇÕES BÁSICAS
+      ----------------------------------------------------- */
       if (!item.company_name) {
         skipped++;
         continue;
       }
 
-      if (item.employees && (item.employees < 10 || item.employees > 150)) {
+      if (item.employees && (item.employees < 10 || item.employees > 100)) {
         skipped++;
         continue;
       }
 
-      // =====================================================
-      // EMPRESA
-      // =====================================================
+      const tamanhoEmpresa = mapTamanhoEmpresa(item.employees);
+
+      if (!tamanhoEmpresa) {
+        skipped++;
+        continue;
+      }
+
+      /* -----------------------------------------------------
+         EMPRESA
+      ----------------------------------------------------- */
       const { data: empresaExistente } = await this.supabase.db
         .from("empresas")
         .select("id")
@@ -44,7 +69,7 @@ export class HasdataImportService {
             estado: item.state ?? null,
             pais: item.country ?? "Brasil",
             linkedin_url: item.linkedin ?? null,
-            tamanho: "10_ate_50",
+            tamanho: tamanhoEmpresa,
           })
           .select("id")
           .single();
@@ -58,9 +83,9 @@ export class HasdataImportService {
         empresaId = empresaNova.id;
       }
 
-      // =====================================================
-      // LEAD (EVITA DUPLICAÇÃO)
-      // =====================================================
+      /* -----------------------------------------------------
+         LEAD (EVITA DUPLICAÇÃO)
+      ----------------------------------------------------- */
       const { data: leadExistente } = await this.supabase.db
         .from("leads")
         .select("id")
