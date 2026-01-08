@@ -1,26 +1,34 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
+import { HasdataImportService } from "./hasdata-import.service";
+import { ImportHasdataByUrlDto } from "./dto/import-by-url.dto";
 
-@Controller("/api/hasdata/import")
+@Controller("/api/hasdata")
 export class HasdataController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly importService: HasdataImportService
+  ) {}
 
-  @Post()
+  // =========================================================
+  // IMPORTAÇÃO DIRETA (URL DO HASDATA) ✅ NOVO
+  // =========================================================
+  @Post("/import-by-url")
+  async importByUrl(@Body() body: ImportHasdataByUrlDto) {
+    return this.importService.importByUrl(body.url);
+  }
+
+  // =========================================================
+  // IMPORTAÇÃO LEGADA (n8n / POST DIRETO) ✅ MANTIDA
+  // =========================================================
+  @Post("/import")
   async import(@Body() body: any) {
-    const {
-      nome,
-      telefone,
-      endereco,
-      site,
-      origem,
-      status,
-    } = body;
+    const { nome, telefone, site, status } = body;
 
     if (!nome) {
       return { error: "Nome é obrigatório" };
     }
 
-    // Evita duplicação por nome + telefone
     const { data: existente } = await this.supabase.db
       .from("leads")
       .select("id")
@@ -37,7 +45,7 @@ export class HasdataController {
       .insert({
         nome,
         telefone: telefone ?? null,
-        linkedin_url: site ?? "",
+        linkedin_url: site ?? null,
         perfil: "outro",
         status: status ?? "novo",
       })
