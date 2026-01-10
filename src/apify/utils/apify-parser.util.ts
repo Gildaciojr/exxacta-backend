@@ -1,36 +1,31 @@
 // src/apify/utils/apify-parser.util.ts
 
 export type ApifyRawItem = {
-  primeiro_nome?: string | null;
-  sobrenome?: string | null;
-  nome_completo?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
 
   email?: string | null;
   personal_email?: string | null;
-  numero_de_celular?: string | null;
+  mobile_number?: string | null;
 
   job_title?: string | null;
   headline?: string | null;
-
   linkedin?: string | null;
 
-  nome_da_empresa?: string | null;
-  site_da_empresa?: string | null;
+  company_name?: string | null;
+  company_website?: string | null;
   company_linkedin?: string | null;
-  company_linkedin_uid?: string | null;
+  industry?: string | null;
+  company_size?: number | null;
 
-  Industria?: string | null;
-
-  tamanho_da_empresa?: number | null;
-
-  cidade?: string | null;
-  estado?: string | null;
-  país?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
 
   company_city?: string | null;
   company_state?: string | null;
   company_country?: string | null;
-
   company_phone?: string | null;
 };
 
@@ -40,7 +35,7 @@ export type NormalizedApifyResult = {
     email: string | null;
     telefone: string | null;
     cargo: string | null;
-    linkedin_url: string;
+    linkedin_url: string | null;
     perfil: string;
     origem: "apify";
   };
@@ -56,64 +51,50 @@ export type NormalizedApifyResult = {
   };
 };
 
-function normalizePerfil(jobTitle?: string | null): string {
-  if (!jobTitle) return "decisor";
-
-  const v = jobTitle.toLowerCase();
-
-  if (v.includes("sócio")) return "socio";
-  if (v.includes("ceo")) return "ceo";
-  if (v.includes("diretor")) return "diretor";
-  if (v.includes("gerente")) return "gerente";
-  if (v.includes("contador")) return "contador";
-
-  return "decisor";
-}
-
-function normalizeText(v?: string | null): string {
+function txt(v?: string | null): string {
   return (v ?? "").toString().trim();
 }
 
-export function parseApifyItem(item: ApifyRawItem): NormalizedApifyResult | null {
-  const nomeCompleto = normalizeText(item.nome_completo);
-  const primeiro = normalizeText(item.primeiro_nome);
-  const sobrenome = normalizeText(item.sobrenome);
+function perfilFromCargo(v?: string | null): string {
+  const t = txt(v).toLowerCase();
+  if (t.includes("ceo")) return "ceo";
+  if (t.includes("sócio") || t.includes("socio")) return "socio";
+  if (t.includes("diretor")) return "diretor";
+  if (t.includes("gerente")) return "gerente";
+  return "decisor";
+}
 
-  const nome =
-    nomeCompleto ||
-    [primeiro, sobrenome].filter((x) => !!x).join(" ").trim();
+export function parseApifyItem(item: ApifyRawItem): NormalizedApifyResult {
+  const nomeLead =
+    txt(item.full_name) ||
+    `${txt(item.first_name)} ${txt(item.last_name)}`.trim() ||
+    "Contato sem nome";
 
-  if (!nome) return null;
-
-  const linkedin = normalizeText(item.linkedin);
-  if (!linkedin) return null;
-
-  const empresaNome = normalizeText(item.nome_da_empresa);
-  if (!empresaNome) return null;
+  const nomeEmpresa = txt(item.company_name) || "Empresa sem nome";
 
   const tamanho =
-    typeof item.tamanho_da_empresa === "number" && !Number.isNaN(item.tamanho_da_empresa)
-      ? item.tamanho_da_empresa
+    typeof item.company_size === "number" && !Number.isNaN(item.company_size)
+      ? item.company_size
       : null;
 
   return {
     lead: {
-      nome,
-      email: item.email ?? item.personal_email ?? null,
-      telefone: item.numero_de_celular ?? item.company_phone ?? null,
-      cargo: item.job_title ?? item.headline ?? null,
-      linkedin_url: linkedin,
-      perfil: normalizePerfil(item.job_title),
+      nome: nomeLead,
+      email: txt(item.email) || null,
+      telefone: txt(item.mobile_number) || txt(item.company_phone) || null,
+      cargo: txt(item.job_title) || txt(item.headline) || null,
+      linkedin_url: txt(item.linkedin) || null,
+      perfil: perfilFromCargo(item.job_title),
       origem: "apify",
     },
     empresa: {
-      nome: empresaNome,
-      site: item.site_da_empresa ?? null,
-      linkedin_url: item.company_linkedin ?? null,
-      industria: item.Industria ?? null,
-      cidade: item.company_city ?? item.cidade ?? null,
-      estado: item.company_state ?? item.estado ?? null,
-      pais: item.company_country ?? item.país ?? "Brasil",
+      nome: nomeEmpresa,
+      site: txt(item.company_website) || null,
+      linkedin_url: txt(item.company_linkedin) || null,
+      industria: txt(item.industry) || null,
+      cidade: txt(item.company_city) || txt(item.city) || null,
+      estado: txt(item.company_state) || txt(item.state) || null,
+      pais: txt(item.company_country) || txt(item.country) || "Brasil",
       tamanho_funcionarios: tamanho,
     },
   };
