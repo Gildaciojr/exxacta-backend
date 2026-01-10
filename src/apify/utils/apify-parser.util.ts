@@ -1,93 +1,110 @@
-export type ApifyRawItem = {
-  fullName?: string;
-  firstName?: string;
-  lastName?: string;
-  jobTitle?: string;
-  profileUrl?: string;
-  email?: string;
-  phone?: string;
+// src/apify/utils/apify-parser.util.ts
 
-  companyName?: string;
-  companyLinkedinUrl?: string;
-  companyWebsite?: string;
-  industry?: string;
-  employeesCount?: number;
-  location?: {
-    city?: string;
-    state?: string;
-    country?: string;
+export type ApifyRawItem = {
+  primeiro_nome?: string | null;
+  sobrenome?: string | null;
+  nome_completo?: string | null;
+
+  email?: string | null;
+  personal_email?: string | null;
+  numero_de_celular?: string | null;
+
+  job_title?: string | null;
+  headline?: string | null;
+
+  linkedin?: string | null;
+
+  nome_da_empresa?: string | null;
+  site_da_empresa?: string | null;
+  company_linkedin?: string | null;
+  company_linkedin_uid?: string | null;
+
+  Industria?: string | null;
+
+  tamanho_da_empresa?: number | null;
+
+  cidade?: string | null;
+  estado?: string | null;
+  país?: string | null;
+
+  company_city?: string | null;
+  company_state?: string | null;
+  company_country?: string | null;
+
+  company_phone?: string | null;
+};
+
+export type NormalizedApifyResult = {
+  lead: {
+    nome: string;
+    email: string | null;
+    telefone: string | null;
+    cargo: string | null;
+    linkedin_url: string;
+    perfil: string;
+    origem: "apify";
+  };
+  empresa: {
+    nome: string;
+    site: string | null;
+    linkedin_url: string | null;
+    industria: string | null;
+    cidade: string | null;
+    estado: string | null;
+    pais: string;
+    tamanho_funcionarios: number | null;
   };
 };
 
-export type NormalizedApifyEmpresa = {
-  nome: string;
-  linkedin_url?: string | null;
-  site?: string | null;
-  industria?: string | null;
-  cidade?: string | null;
-  estado?: string | null;
-  pais?: string | null;
-  tamanho_funcionarios?: number | null;
-};
+function normalizePerfil(jobTitle?: string | null): string {
+  if (!jobTitle) return "decisor";
 
-export type NormalizedApifyLead = {
-  nome: string;
-  cargo?: string | null;
-  email?: string | null;
-  telefone?: string | null;
-  linkedin_url: string;
-  perfil: string;
-  origem: "apify";
-};
+  const v = jobTitle.toLowerCase();
 
-function mapPerfil(cargo?: string | null): string {
-  if (!cargo) return "outro";
-  const c = cargo.toLowerCase();
-
-  if (c.includes("ceo")) return "ceo";
-  if (c.includes("diretor")) return "diretor";
-  if (c.includes("sócio") || c.includes("partner")) return "socio";
-  if (c.includes("contador")) return "contador";
-  if (c.includes("gerente")) return "gerente";
+  if (v.includes("sócio")) return "socio";
+  if (v.includes("ceo")) return "ceo";
+  if (v.includes("diretor")) return "diretor";
+  if (v.includes("gerente")) return "gerente";
+  if (v.includes("contador")) return "contador";
 
   return "decisor";
 }
 
-export function normalizeApifyItem(item: ApifyRawItem): {
-  empresa: NormalizedApifyEmpresa;
-  lead: NormalizedApifyLead;
-} {
-  const nomeLead =
-    item.fullName ||
-    [item.firstName, item.lastName].filter(Boolean).join(" ");
+export function parseApifyItem(
+  item: ApifyRawItem
+): NormalizedApifyResult | null {
+  const nome =
+    item.nome_completo ??
+    [item.primeiro_nome, item.sobrenome].filter(Boolean).join(" ").trim();
 
-  if (!nomeLead || !item.profileUrl) {
-    throw new Error("Lead inválido: nome ou LinkedIn ausente");
-  }
+  if (!nome) return null;
+
+  if (!item.linkedin) return null;
+
+  if (!item.nome_da_empresa) return null;
 
   return {
-    empresa: {
-      nome: item.companyName ?? "Empresa sem nome",
-      linkedin_url: item.companyLinkedinUrl ?? null,
-      site: item.companyWebsite ?? null,
-      industria: item.industry ?? null,
-      cidade: item.location?.city ?? null,
-      estado: item.location?.state ?? null,
-      pais: item.location?.country ?? "Brasil",
-      tamanho_funcionarios:
-        typeof item.employeesCount === "number"
-          ? item.employeesCount
-          : null,
-    },
-
     lead: {
-      nome: nomeLead,
-      cargo: item.jobTitle ?? null,
-      email: item.email ?? null,
-      telefone: item.phone ?? null,
-      linkedin_url: item.profileUrl,
-      perfil: mapPerfil(item.jobTitle),
+      nome,
+      email: item.email ?? item.personal_email ?? null,
+      telefone: item.numero_de_celular ?? item.company_phone ?? null,
+      cargo: item.job_title ?? item.headline ?? null,
+      linkedin_url: item.linkedin,
+      perfil: normalizePerfil(item.job_title),
       origem: "apify",
+    },
+    empresa: {
+      nome: item.nome_da_empresa,
+      site: item.site_da_empresa ?? null,
+      linkedin_url: item.company_linkedin ?? null,
+      industria: item.Industria ?? null,
+      cidade: item.company_city ?? item.cidade ?? null,
+      estado: item.company_state ?? item.estado ?? null,
+      pais: item.company_country ?? item.país ?? "Brasil",
+      tamanho_funcionarios:
+        typeof item.tamanho_da_empresa === "number"
+          ? item.tamanho_da_empresa
+          : null,
     },
   };
 }

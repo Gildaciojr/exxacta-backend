@@ -1,7 +1,9 @@
+// src/apify/apify-import.service.ts
+
 import { Injectable } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
 import {
-  normalizeApifyItem,
+  parseApifyItem,
   ApifyRawItem,
 } from "./utils/apify-parser.util";
 
@@ -10,10 +12,13 @@ type TamanhoEmpresa = "10_ate_20" | "21_ate_50" | "51_ate_100";
 function mapTamanhoEmpresa(
   employees?: number | null
 ): TamanhoEmpresa | null {
-  if (!employees) return null;
+  if (employees === null || employees === undefined) return null;
+  if (Number.isNaN(employees)) return null;
+
   if (employees >= 10 && employees <= 20) return "10_ate_20";
   if (employees >= 21 && employees <= 50) return "21_ate_50";
   if (employees >= 51 && employees <= 100) return "51_ate_100";
+
   return null;
 }
 
@@ -34,20 +39,28 @@ export class ApifyImportService {
     let skipped = 0;
     let createdCompanies = 0;
     let skippedDuplicateLeads = 0;
+    let skippedMissingEmail = 0;
 
     for (const item of items) {
-      let normalized;
-      try {
-        normalized = normalizeApifyItem(item);
-      } catch {
+      const normalized = parseApifyItem(item);
+
+      if (!normalized) {
         skipped++;
         continue;
       }
 
       const { empresa, lead } = normalized;
 
+      // 🔴 REGRA DE NEGÓCIO CRÍTICA
+      // n8n só funciona com email
+      if (!lead.email) {
+        skipped++;
+        skippedMissingEmail++;
+        continue;
+      }
+
       /* ======================================================
-         EMPRESA — DUPLICIDADE POR LINKEDIN
+         EMPRESA — DUPLICIDADE (LinkedIn → Nome)
       ====================================================== */
       let empresaId: string | null = null;
 
@@ -56,6 +69,16 @@ export class ApifyImportService {
           .from("empresas")
           .select("id")
           .eq("linkedin_url", empresa.linkedin_url)
+          .maybeSingle();
+
+        empresaId = data?.id ?? null;
+      }
+
+      if (!empresaId) {
+        const { data } = await this.supabase.db
+          .from("empresas")
+          .select("id")
+          .eq("nome", empresa.nome)
           .maybeSingle();
 
         empresaId = data?.id ?? null;
@@ -101,8 +124,8 @@ export class ApifyImportService {
         .maybeSingle();
 
       if (leadExistente) {
-        skippedDuplicateLeads++;
         skipped++;
+        skippedDuplicateLeads++;
         continue;
       }
 
@@ -136,6 +159,7 @@ export class ApifyImportService {
       details: {
         createdCompanies,
         skippedDuplicateLeads,
+        skippedMissingEmail,
       },
     };
   }
