@@ -70,18 +70,31 @@ function normalizePerfil(jobTitle?: string | null): string {
   return "decisor";
 }
 
-export function parseApifyItem(
-  item: ApifyRawItem
-): NormalizedApifyResult | null {
+function normalizeText(v?: string | null): string {
+  return (v ?? "").toString().trim();
+}
+
+export function parseApifyItem(item: ApifyRawItem): NormalizedApifyResult | null {
+  const nomeCompleto = normalizeText(item.nome_completo);
+  const primeiro = normalizeText(item.primeiro_nome);
+  const sobrenome = normalizeText(item.sobrenome);
+
   const nome =
-    item.nome_completo ??
-    [item.primeiro_nome, item.sobrenome].filter(Boolean).join(" ").trim();
+    nomeCompleto ||
+    [primeiro, sobrenome].filter((x) => !!x).join(" ").trim();
 
   if (!nome) return null;
 
-  if (!item.linkedin) return null;
+  const linkedin = normalizeText(item.linkedin);
+  if (!linkedin) return null;
 
-  if (!item.nome_da_empresa) return null;
+  const empresaNome = normalizeText(item.nome_da_empresa);
+  if (!empresaNome) return null;
+
+  const tamanho =
+    typeof item.tamanho_da_empresa === "number" && !Number.isNaN(item.tamanho_da_empresa)
+      ? item.tamanho_da_empresa
+      : null;
 
   return {
     lead: {
@@ -89,22 +102,19 @@ export function parseApifyItem(
       email: item.email ?? item.personal_email ?? null,
       telefone: item.numero_de_celular ?? item.company_phone ?? null,
       cargo: item.job_title ?? item.headline ?? null,
-      linkedin_url: item.linkedin,
+      linkedin_url: linkedin,
       perfil: normalizePerfil(item.job_title),
       origem: "apify",
     },
     empresa: {
-      nome: item.nome_da_empresa,
+      nome: empresaNome,
       site: item.site_da_empresa ?? null,
       linkedin_url: item.company_linkedin ?? null,
       industria: item.Industria ?? null,
       cidade: item.company_city ?? item.cidade ?? null,
       estado: item.company_state ?? item.estado ?? null,
       pais: item.company_country ?? item.país ?? "Brasil",
-      tamanho_funcionarios:
-        typeof item.tamanho_da_empresa === "number"
-          ? item.tamanho_da_empresa
-          : null,
+      tamanho_funcionarios: tamanho,
     },
   };
 }

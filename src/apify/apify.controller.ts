@@ -8,6 +8,6 @@ export class ApifyController {
 
   @Post("/import-by-url")
   async importByUrl(@Body() body: ImportApifyByUrlDto) {
-    return this.service.importByUrl(body.url);
+    return this.service.importByUrl(body.url, body.forceImport);
   }
 }
