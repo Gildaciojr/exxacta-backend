@@ -7,7 +7,9 @@ import { StatusModule } from "./status/status.module";
 import { ApifyModule } from "./apify/apify.module";
 
 import { SupabaseService } from "./supabase/supabase.service";
+
 import { ValidateN8nSignatureMiddleware } from "./common/middleware/validate-n8n-signature.middleware";
+import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 
 @Module({
   imports: [
@@ -22,10 +24,14 @@ import { ValidateN8nSignatureMiddleware } from "./common/middleware/validate-n8n
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(ValidateN8nSignatureMiddleware)
+      .apply(
+        RequestLoggerMiddleware,           // 👈 PRIMEIRO: LOGA TUDO
+        ValidateN8nSignatureMiddleware     // 👈 DEPOIS: VALIDA ASSINATURA
+      )
       .forRoutes(
         "/api/webhooks",
-        "/api/status"
+        "/api/status",
+        "/api/apify" // 🔥 MUITO IMPORTANTE: LOGAR IMPORTAÇÃO
       );
   }
 }
