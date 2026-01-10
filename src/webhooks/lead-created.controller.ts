@@ -1,6 +1,7 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
 import { isUuid } from "./utils";
+import { normalizeApifyLead } from "../common/normalizers/apify-lead.normalizer";
 
 type LeadPayload = {
   id?: string | null;
@@ -34,40 +35,74 @@ export class LeadCreatedController {
   constructor(private readonly supabase: SupabaseService) {}
 
   @Post()
-  async handle(@Body() body: { lead?: LeadPayload }) {
-    const lead = body?.lead ?? {};
-
-    if (!lead.nome || !lead.linkedin_url) {
-      return { error: "Missing required fields (nome, linkedin_url)" };
-    }
+  async handle(@Body() body: any) {
+    const isApifyPayload = !body.lead && body.nome_completo;
 
     const nowIso = new Date().toISOString();
-    const hasValidId = isUuid(lead.id ?? null);
 
-    const payload: any = {
-      nome: lead.nome,
-      cargo: lead.cargo ?? null,
-      linkedin_url: lead.linkedin_url,
-      email: lead.email ?? null,
-      telefone: lead.telefone ?? null,
-      perfil: normalizarPerfil(lead.perfil),
-      empresa_id: lead.empresa_id ?? null,
-      status: "novo",
-      atualizado_em: nowIso,
-    };
+    let leadData: any;
+    let empresaData: any;
 
-    if (hasValidId) {
-      payload.id = lead.id;
+    if (isApifyPayload) {
+      const normalized = normalizeApifyLead(body);
+      leadData = normalized.lead;
+      empresaData = normalized.empresa;
+    } else {
+      const lead = body?.lead ?? {};
+      leadData = {
+        nome: lead.nome ?? null,
+        cargo: lead.cargo ?? null,
+        email: lead.email ?? null,
+        telefone: lead.telefone ?? null,
+        linkedin_url: lead.linkedin_url ?? null,
+        perfil: lead.perfil ?? "outro",
+        origem: "hasdata",
+      };
+    }
+
+    if (!leadData.nome || !leadData.linkedin_url) {
+      return { error: "Campos obrigatórios ausentes (nome, linkedin_url)" };
+    }
+
+    // =========================
+    // EMPRESA
+    // =========================
+    let empresaId: string | null = null;
+
+    if (empresaData?.nome) {
+      const { data: existente } = await this.supabase.db
+        .from("empresas")
+        .select("id")
+        .eq("nome", empresaData.nome)
+        .maybeSingle();
+
+      if (existente) {
+        empresaId = existente.id;
+      } else {
+        const { data: novaEmpresa } = await this.supabase.db
+          .from("empresas")
+          .insert(empresaData)
+          .select("id")
+          .single();
+
+        empresaId = novaEmpresa?.id ?? null;
+      }
     }
 
     const { data, error } = await this.supabase.db
       .from("leads")
-      .upsert(payload, { onConflict: "id" })
+      .insert({
+        ...leadData,
+        empresa_id: empresaId,
+        status: "novo",
+        criado_em: nowIso,
+        atualizado_em: nowIso,
+      })
       .select("*")
       .single();
 
     if (error) {
-      console.error("Erro lead-created:", error);
+      console.error("Erro ao criar lead:", error);
       return { error: "Database error" };
     }
 
