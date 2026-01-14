@@ -11,12 +11,15 @@ import { SupabaseService } from "./supabase/supabase.service";
 import { ValidateN8nSignatureMiddleware } from "./common/middleware/validate-n8n-signature.middleware";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 
+import { EmailTemplatesModule } from "./email-templates/email-templates.module";
+
 @Module({
   imports: [
     WebhooksModule,
     HasdataModule,
     StatusModule,
     ApifyModule,
+    EmailTemplatesModule,
   ],
   controllers: [AppController],
   providers: [SupabaseService],
