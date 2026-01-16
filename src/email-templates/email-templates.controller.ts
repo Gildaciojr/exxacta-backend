@@ -31,12 +31,11 @@ export class EmailTemplatesController {
         empresa,
         remetente,
       }),
-      corpo: this.service.renderTemplate(template.email_template, {
+      corpo: this.service.renderTemplate(template.corpo, {
         nome,
         empresa,
         remetente,
       }),
-      assinatura: template.assinatura,
     };
   }
 }
