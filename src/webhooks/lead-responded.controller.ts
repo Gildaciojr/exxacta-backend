@@ -1,3 +1,4 @@
+// src/webhooks/lead-responded.controller.ts
 import { Body, Controller, Post } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
 import { isUuid } from "./utils";
@@ -8,24 +9,53 @@ export class LeadRespondedController {
 
   @Post()
   async handle(@Body() body: any) {
-    const leadId = body?.lead?.id ?? null;
+    const leadIdRaw = body?.lead?.id ?? null;
+    const emailRaw = body?.lead?.email ?? null;
 
-    if (!isUuid(leadId)) {
-      return { error: "Lead ID inválido" };
+    const email =
+      typeof emailRaw === "string" ? emailRaw.trim().toLowerCase() : null;
+
+    // 1) Resolve leadId (por ID se vier, senão por email)
+    let leadId: string | null = null;
+
+    if (isUuid(leadIdRaw)) {
+      leadId = leadIdRaw;
+    } else if (email) {
+      const { data: leadFound, error: findErr } = await this.supabase.db
+        .from("leads")
+        .select("id, email")
+        .ilike("email", email) // tolerante a case
+        .order("criado_em", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (findErr || !leadFound?.id) {
+        return { error: "Lead não encontrado por email", email };
+      }
+
+      leadId = leadFound.id;
+    }
+
+    if (!leadId) {
+      return {
+        error: "Payload inválido: informe lead.id (uuid) ou lead.email",
+      };
     }
 
     const nowIso = new Date().toISOString();
 
+    // 2) Atualiza lead -> interessado
     await this.supabase.db
       .from("leads")
       .update({ status: "interessado", atualizado_em: nowIso })
       .eq("id", leadId);
 
+    // 3) Registra interação
     await this.supabase.db.from("interacoes").insert({
       lead_id: leadId,
       status: "respondeu",
       canal: "email",
-      observacao: "Lead respondeu ao contato automático (n8n).",
+      observacao: "Lead respondeu ao contato automático (n8n / Gmail).",
       criado_em: nowIso,
     });
 

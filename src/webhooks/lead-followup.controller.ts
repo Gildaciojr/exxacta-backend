@@ -1,3 +1,4 @@
+// src/webhooks/lead-followup.controller.ts
 import { Body, Controller, Post } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
 import { isUuid } from "./utils";
@@ -16,23 +17,22 @@ export class LeadFollowupController {
 
     const nowIso = new Date().toISOString();
 
-    await this.supabase.db
-      .from("leads")
-      .update({ status: "email_enviado", atualizado_em: nowIso })
-      .eq("id", leadId);
-
+    // ✅ Não mexe no status do lead aqui.
+    // Apenas registra o follow-up como interação.
     await this.supabase.db.from("interacoes").insert({
       lead_id: leadId,
-      status: "email_enviado",
+      status: "follow_up",
       canal: "email",
-      observacao: "Follow-up automático inicial via n8n",
+      observacao: "Follow-up automático (n8n) — etapa intermediária.",
       criado_em: nowIso,
     });
 
-    return {
-      ok: true,
-      lead_id: leadId,
-      status: "email_enviado",
-    };
+    // (opcional) Atualiza somente o atualizado_em para refletir ação recente
+    await this.supabase.db
+      .from("leads")
+      .update({ atualizado_em: nowIso })
+      .eq("id", leadId);
+
+    return { ok: true, lead_id: leadId, status: "follow_up" };
   }
 }

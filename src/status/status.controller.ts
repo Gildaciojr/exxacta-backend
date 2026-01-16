@@ -3,19 +3,10 @@ import { Body, Controller, Get, Post } from "@nestjs/common";
 import { SupabaseService } from "../supabase/supabase.service";
 import { isUuid } from "../webhooks/utils";
 
-/**
- * Controller responsável por:
- * - Atualização de status do lead (manual ou automação)
- * - Registro de interações
- * - Disparo de webhook para o n8n (automação)
- */
 @Controller("/api/status")
 export class StatusController {
   constructor(private readonly supabase: SupabaseService) {}
 
-  // =========================================================
-  // HEALTHCHECK (EasyPanel / Monitoramento)
-  // =========================================================
   @Get()
   health() {
     return {
@@ -25,49 +16,48 @@ export class StatusController {
     };
   }
 
-  // =========================================================
-  // Atualização de status do lead (dashboard / automações)
-  // =========================================================
   @Post()
   async update(@Body() body: any) {
     const leadId = body?.lead_id ?? null;
-    const status = body?.status ?? null;
+    let status = body?.status ?? null;
 
     if (!isUuid(leadId) || !status) {
       return { error: "lead_id ou status inválido" };
     }
 
+    // ✅ Normalização defensiva
+    if (typeof status === "string") status = status.trim().toLowerCase();
+
+    // ✅ REGRA: dia 07 sem resposta => PERDIDO
+    if (status === "sem_resposta") {
+      status = "perdido";
+    }
+
     const nowIso = new Date().toISOString();
 
-    // -------------------------------------------------------
-    // 1) Atualiza o lead
-    // -------------------------------------------------------
+    // 1) Atualiza lead
     await this.supabase.db
       .from("leads")
-      .update({
-        status,
-        atualizado_em: nowIso,
-      })
+      .update({ status, atualizado_em: nowIso })
       .eq("id", leadId);
 
-    // -------------------------------------------------------
-    // 2) Registra interação (auditoria / histórico)
-    // -------------------------------------------------------
+    // 2) Registra interação (histórico)
     await this.supabase.db.from("interacoes").insert({
       lead_id: leadId,
       status,
       canal: "automacao_n8n",
-      observacao: `Status atualizado via dashboard → ${status}`,
+      observacao: `Status atualizado via dashboard/n8n → ${status}`,
       criado_em: nowIso,
     });
 
-    // -------------------------------------------------------
-    // 3) DISPARA WEBHOOK PARA O N8N (PONTE CRÍTICA)
-    // -------------------------------------------------------
+    // 3) DISPARA N8N APENAS NO STATUS QUE INICIA A AUTOMAÇÃO
+    // ✅ A automação deve iniciar SOMENTE quando vira "contatado"
+    const deveDispararAutomacao = status === "contatado";
+
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_LEAD_STATUS;
     const n8nSecret = process.env.EXXACTA_N8N_SECRET;
 
-    if (n8nWebhookUrl) {
+    if (deveDispararAutomacao && n8nWebhookUrl) {
       try {
         await fetch(n8nWebhookUrl, {
           method: "POST",
@@ -77,28 +67,15 @@ export class StatusController {
           },
           body: JSON.stringify({
             event: "lead.status_changed",
-            lead: {
-              id: leadId,
-              status,
-            },
+            lead: { id: leadId, status },
             timestamp: nowIso,
           }),
         });
       } catch (error) {
-        console.error(
-          "[N8N] Falha ao disparar webhook lead.status_changed",
-          error
-        );
+        console.error("[N8N] Falha ao disparar lead.status_changed", error);
       }
     }
 
-    // -------------------------------------------------------
-    // 4) Retorno padrão (frontend)
-    // -------------------------------------------------------
-    return {
-      ok: true,
-      lead_id: leadId,
-      status,
-    };
+    return { ok: true, lead_id: leadId, status };
   }
 }
