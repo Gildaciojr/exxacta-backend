@@ -12,6 +12,7 @@ import { ValidateN8nSignatureMiddleware } from "./common/middleware/validate-n8n
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 
 import { EmailTemplatesModule } from "./email-templates/email-templates.module";
+import { LeadsModule } from "./leads/leads.module";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { EmailTemplatesModule } from "./email-templates/email-templates.module";
     StatusModule,
     ApifyModule,
     EmailTemplatesModule,
+    LeadsModule,
   ],
   controllers: [AppController],
   providers: [SupabaseService],
