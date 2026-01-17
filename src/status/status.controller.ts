@@ -30,9 +30,7 @@ export class StatusController {
   }
 
   @Post()
-  async update(
-    @Body() body: { lead_id: string; status: string }
-  ): Promise<{
+  async update(@Body() body: { lead_id: string; status: string }): Promise<{
     ok: boolean;
     lead_id?: string;
     status?: string;
@@ -65,12 +63,11 @@ export class StatusController {
     const nowIso = new Date().toISOString();
 
     // 1️⃣ Buscar status atual do lead (ANTI DUPLICAÇÃO)
-    const { data: leadAtual, error: leadError } =
-      await this.supabase.db
-        .from("leads")
-        .select("id, status")
-        .eq("id", leadId)
-        .single();
+    const { data: leadAtual, error: leadError } = await this.supabase.db
+      .from("leads")
+      .select("id, status")
+      .eq("id", leadId)
+      .single();
 
     if (leadError || !leadAtual) {
       return {
@@ -101,7 +98,7 @@ export class StatusController {
 
     // 4️⃣ DISPARA N8N APENAS NA TRANSIÇÃO PARA em_conversa
     const deveDispararN8n =
-      status === "em_conversa" && statusAnterior !== "em_conversa";
+      status === "contatado" && statusAnterior !== "contatado";
 
     if (deveDispararN8n) {
       const url = process.env.N8N_WEBHOOK_LEAD_STATUS;
@@ -119,8 +116,9 @@ export class StatusController {
               event: "lead.status_changed",
               lead: {
                 id: leadId,
-                status: "em_conversa",
+                status: "contatado",
               },
+
               timestamp: nowIso,
             }),
           });
