@@ -15,7 +15,7 @@ export class LeadRespondedController {
     const email =
       typeof emailRaw === "string" ? emailRaw.trim().toLowerCase() : null;
 
-    // 1) Resolve leadId (por ID se vier, senão por email)
+    // 1) leadId
     let leadId: string | null = null;
 
     if (isUuid(leadIdRaw)) {
@@ -24,7 +24,7 @@ export class LeadRespondedController {
       const { data: leadFound, error: findErr } = await this.supabase.db
         .from("leads")
         .select("id, email")
-        .ilike("email", email) // tolerante a case
+        .ilike("email", email)
         .order("criado_em", { ascending: false })
         .limit(1)
         .maybeSingle();

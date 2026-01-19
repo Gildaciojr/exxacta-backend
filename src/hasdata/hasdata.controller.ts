@@ -11,7 +11,7 @@ export class HasdataController {
   ) {}
 
   // =========================================================
-  // IMPORTAÇÃO DIRETA (URL DO HASDATA) ✅ NOVO
+  // IMPORTAÇÃO DIRETA 
   // =========================================================
   @Post("/import-by-url")
   async importByUrl(@Body() body: ImportHasdataByUrlDto) {
@@ -19,7 +19,7 @@ export class HasdataController {
   }
 
   // =========================================================
-  // IMPORTAÇÃO LEGADA (n8n / POST DIRETO) ✅ MANTIDA
+  // IMPORTAÇÃO LEGADA 
   // =========================================================
   @Post("/import")
   async import(@Body() body: any) {

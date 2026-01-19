@@ -72,7 +72,7 @@ export class HasdataImportService {
     let imported = 0;
     let skipped = 0;
 
-    // métricas úteis (para você mostrar no card)
+    // métricas úteis 
     let skippedMissingCompanyName = 0;
     let skippedOutOfRangeEmployees = 0;
     let skippedMissingEmployeesBecauseRequire = 0;
@@ -83,7 +83,7 @@ export class HasdataImportService {
 
     for (const item of items) {
       /* -----------------------------------------------------
-         NORMALIZAÇÃO DO INPUT (sem assumir formato perfeito)
+         NORMALIZAÇÃO DO INPUT 
       ----------------------------------------------------- */
       const companyName: string | null = item?.company_name ?? null;
       const website: string | null = item?.website ?? null;
@@ -142,7 +142,7 @@ export class HasdataImportService {
       }
 
       /* -----------------------------------------------------
-         EMPRESA (cria ou reutiliza)
+         EMPRESA 
       ----------------------------------------------------- */
       const { data: empresaExistente } = await this.supabase.db
         .from("empresas")
@@ -196,7 +196,7 @@ export class HasdataImportService {
       }
 
       /* -----------------------------------------------------
-         LEAD (EVITA DUPLICAÇÃO)
+         LEAD
       ----------------------------------------------------- */
       const { data: leadExistente } = await this.supabase.db
         .from("leads")

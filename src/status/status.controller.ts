@@ -7,7 +7,7 @@ const STATUS_VALIDOS = [
   "email_enviado",
   "aquecimento",
   "contatado",
-  "em_conversa", // 🔥 ÚNICO GATILHO N8N
+  "em_conversa",
   "interessado",
   "qualificado",
   "frio",
@@ -55,14 +55,14 @@ export class StatusController {
       };
     }
 
-    // 🔥 REGRA FINAL: sem_resposta SEMPRE vira perdido
+    //sem_resposta SEMPRE vira perdido
     if (status === "sem_resposta") {
       status = "perdido";
     }
 
     const nowIso = new Date().toISOString();
 
-    // 1️⃣ Buscar status atual do lead (ANTI DUPLICAÇÃO)
+    // 1️⃣ Buscar status atual do lead
     const { data: leadAtual, error: leadError } = await this.supabase.db
       .from("leads")
       .select("id, status")

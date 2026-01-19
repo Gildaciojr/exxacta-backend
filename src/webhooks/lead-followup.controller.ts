@@ -17,7 +17,6 @@ export class LeadFollowupController {
 
     const nowIso = new Date().toISOString();
 
-    // ✅ Não mexe no status do lead aqui.
     // Apenas registra o follow-up como interação.
     await this.supabase.db.from("interacoes").insert({
       lead_id: leadId,
@@ -27,7 +26,7 @@ export class LeadFollowupController {
       criado_em: nowIso,
     });
 
-    // (opcional) Atualiza somente o atualizado_em para refletir ação recente
+    // Atualiza somente o atualizado_em para refletir ação recente
     await this.supabase.db
       .from("leads")
       .update({ atualizado_em: nowIso })

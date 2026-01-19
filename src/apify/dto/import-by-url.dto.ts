@@ -5,10 +5,10 @@ export class ImportApifyByUrlDto {
   url!: string;
 
   /**
-   * ✅ Quando true: importa TUDO (inclusive fora do filtro 10–150)
-   * ✅ Quando false/undefined: só importa o que respeita 10–150
+   * true: importa TUDO (inclusive fora do filtro 10–150)
+   * false/undefined: só importa o que respeita 10–150
    *
-   * Mantém compatibilidade com o front atual (se ele não mandar nada, default = false)
+   * compatibilidade com o front atual 
    */
   @IsOptional()
   @IsBoolean({ message: "forceImport deve ser boolean" })

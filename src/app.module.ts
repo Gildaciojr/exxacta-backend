@@ -30,13 +30,13 @@ export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(
-        RequestLoggerMiddleware,           // 👈 PRIMEIRO: LOGA TUDO
-        ValidateN8nSignatureMiddleware     // 👈 DEPOIS: VALIDA ASSINATURA
+        RequestLoggerMiddleware,           
+        ValidateN8nSignatureMiddleware     
       )
       .forRoutes(
         "/api/webhooks",
         "/api/status",
-        "/api/apify" // 🔥 MUITO IMPORTANTE: LOGAR IMPORTAÇÃO
+        "/api/apify" 
       );
   }
 }
